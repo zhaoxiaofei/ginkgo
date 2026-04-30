@@ -27,9 +27,6 @@ fi
 
 ASSEMBLY=$1
 
-if false;
-then
-
 echo "# Indexing $ASSEMBLY for ${READLEN[*]} bp reads using bins of size ${BINSIZE[*]}"
 
 if [ ! -f list ]
@@ -50,8 +47,6 @@ then
   #/opt/uge/bin/lx-amd64/qsub -cwd -l m_mem_free=8G -v ASSEMBLY=$ASSEMBLY $SCRIPTS/indexBWA
   #/opt/uge/bin/lx-amd64/qsub -cwd -l m_mem_free=8G -v ASSEMBLY=$ASSEMBLY $SCRIPTS/indexBOWTIE
   parallel -j ${nproc} env ASSEMBLY=$ASSEMBLY {} ::: $SCRIPTS/indexBWA $SCRIPTS/indexBOWTIE
-fi
-
 fi
 
 for len in ${READLEN[*]}; do
