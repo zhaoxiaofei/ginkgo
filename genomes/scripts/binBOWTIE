@@ -1,3 +1,3 @@
 #!/bin/bash
 
-/seq/schatz/mschatz/ginkgo/genomes/scripts/bin results_${SIZE}_${LENGTH}_${TYPE}_${IN} centromeres $SIZE $LENGTH `grep -w $IN lengths | awk '{print $2}'` ${IN}_${LENGTH}_${TYPE}_done
+${GINKGO_PARENT_DIR}ginkgo/genomes/scripts/bin results_${SIZE}_${LENGTH}_${TYPE}_${IN} centromeres $SIZE $LENGTH `grep -w $IN lengths | awk '{print $2}'` ${IN}_${LENGTH}_${TYPE}_done

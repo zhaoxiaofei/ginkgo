@@ -10,9 +10,11 @@
 
 rm ${TMPDIR}/${IN}_${LENGTH}_frags.sai
 
-for size in `cat binsizes`; do
-  /opt/uge/bin/lx-amd64/qsub -V -cwd -l m_mem_free=3G -v LENGTH=$LENGTH -v SIZE=$size -v TYPE=bwa -v IN=$IN /seq/schatz/mschatz/ginkgo/genomes/scripts/binBWA
-done
+#for size in `cat binsizes`; do
+#  /opt/uge/bin/lx-amd64/qsub -V -cwd -l m_mem_free=3G -v LENGTH=$LENGTH -v SIZE=$size -v TYPE=bwa -v IN=$IN ${GINKGO_PARENT_DIR}ginkgo/genomes/scripts/binBWA
+#done
+
+parallel -j ${nproc} env LENGTH=$LENGTH SIZE={} TYPE=bwa IN=$IN ${GINKGO_PARENT_DIR}ginkgo/genomes/scripts/binBWA :::: binsizes
 
 touch bwa_done
 
