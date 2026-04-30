@@ -13,7 +13,7 @@ ASSEMBLY=$2 # e.g., GRCh38_gencode_v22_CTAT_lib_Mar012021
 GENOME_FASTA="$1" # e.g., the one from https://data.broadinstitute.org/Trinity/CTAT_RESOURCE_LIB/GRCh38_gencode_v22_CTAT_lib_Mar012021.plug-n-play.tar.gz 
 
 # multi-chromosome reference FASTA
-SCRIPTS=$(dirname $(which $0))/genomes/scripts   # path to this scripts directory
+SCRIPTS=$(realpath $(dirname $(which $0))/genomes/scripts)   # path to this scripts directory
 
 ####################################################
 
@@ -25,6 +25,6 @@ fi
 
 export SCRIPTS
 export nproc=40
-export GINKGO_PARENT_DIR=$(dirname $(which $0))
+export GINKGO_PARENT_DIR=$(realpath $(dirname $(which $0))/..)/
 
 bash -evx $SCRIPTS/buildGenome $ASSEMBLY
