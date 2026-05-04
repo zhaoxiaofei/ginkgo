@@ -37,6 +37,7 @@ f           = as.numeric(args[[11]])
 facs        = args[[12]]
 sex         = as.numeric(args[[13]])
 bb          = as.numeric(args[[14]])
+ncores      = as.numeric(args[[15]])
 
 # Libraries
 library(ctc)
@@ -47,6 +48,7 @@ library(scales)
 library(plyr)
 library(ggplot2)
 library(gridExtra)
+library(parallel)
 
 #NOTE: The workaround https://github.com/ChristophH/gplots described at https://github.com/robertaboukhalil/ginkgo no longer works with R version 4.X.X
 #NOTE: Therefore, we fall back to the heatmap function
@@ -62,12 +64,16 @@ close(statusFile)
 
 # Load genome specific files
 setwd(genome)
+print(paste("In ", genome, ": Reading ", "GC_", bm, sep=""))
 GC     = read.table(paste("GC_", bm, sep="")    , header=FALSE, sep="\t", as.is=TRUE)
+print(paste("In ", genome, ": Reading ", bm, sep=""))
 loc    = read.table(bm                          , header=TRUE , sep="\t", as.is=TRUE)
+print(paste("In ", genome, ": Reading ", "bounds_", bm, sep=""))
 bounds = read.table(paste("bounds_", bm, sep=""), header=FALSE, sep="\t")
 
 # Load user data
 setwd(user_dir)
+print(paste("In ", user_dir, ": Reading ", dat, sep=""))
 raw    = read.table(dat, header=TRUE, sep="\t")
 ploidy = rbind(c(0,0), c(0,0))
 if (f == 1 | f == 2) {
@@ -148,9 +154,9 @@ sink("results.txt")
 cat(paste("Sample\tCopy_Number\tSoS_Predicted_Ploidy\tError_in_SoS_Approach\n", sep=""))
 
 #
-for(k in 1:w)
+results=mclapply(1:w, function(k)
 {
-  cat('===',k,'===\n')
+  message('===',k,'===\n')
 
   statusFile = file( paste(user_dir, "/", status, sep="") )
   writeLines(c("<?xml version='1.0'?>", "<status>", "<step>3</step>", paste("<processingfile>", lab[k], "</processingfile>", sep=""), paste("<percentdone>", (k*100)%/%(w+4), "</percentdone>", sep=""), "<tree>clust.xml</tree>", "</status>"), statusFile)
@@ -237,7 +243,6 @@ for(k in 1:w)
 
   # Output results of CN calculations to file
   out=paste(lab[k], CN, paste(CNmult[,k], collapse= ","), paste(CNerror[,k], collapse= ","), sep="\t")
-  cat(out, "\n")
 
   # ----------------------------------------------------------------------------
   # -- Generate Plots & Figures
@@ -476,6 +481,11 @@ for(k in 1:w)
     grid.arrange(plot1, ncol=1)
   dev.off()
 
+  list(k=k, out=out, stats_k=stats[k,], normal_k=normal[,k], breaks_k=breaks[,k], fixed_k=fixed[,k], final_k=final[,k])
+}, mc.cores=ncores)
+for(r in results)
+{
+  k=r$k; cat(r$out, "\n"); stats[k,]=r$stats_k; normal[,k]=r$normal_k; breaks[,k]=r$breaks_k; fixed[,k]=r$fixed_k; final[,k]=r$final_k
 }
 
 # ------------------------------------------------------------------------------
@@ -706,4 +716,3 @@ dev.off()
 statusFile=file( paste(user_dir, "/", status, sep="") )
 writeLines(c("<?xml version='1.0'?>", "<status>", "<step>3</step>", paste("<processingfile>Finished</processingfile>", sep=""), paste("<percentdone>100</percentdone>", sep=""), "<tree>clust.xml</tree>", "</status>"), statusFile)
 close(statusFile)
-
