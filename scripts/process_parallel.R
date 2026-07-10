@@ -285,8 +285,11 @@ if (FALSE) {
   CNerror_facs = NA                                # (FIX) always defined for the SoS plot
   used_facs    = FALSE
   if (f == 0 | length(which(lab[k]==ploidy[,1]))==0 ) {
-    err = outerColsums[,k]; err[!allowed] = Inf  # (NEW) restrict SoS to the interval(s)
-    CN  = CNgrid[which.min(err)]
+    # err = outerColsums[,k]; err[!allowed] = Inf  # (NEW) restrict SoS to the interval(s)
+    # CN  = CNgrid[which.min(err)]
+    ord = order(outerColsums[,k])
+    ord = ord[allowed[ord]]              # keep original tie-break order, just filter disallowed grid points
+    CN  = CNgrid[ord[1]]
   } else if (f == 1) {
     CN = ploidy[which(lab[k]==ploidy[,1]),2]
     CNerror_facs = round( sort(colSums((round(fixed[,k] %o% c(CN)) - fixed[,k] %o% c(CN)) ^ 2, na.rm=FALSE, dims=1)), digits=2 )
