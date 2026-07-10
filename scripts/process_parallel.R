@@ -80,6 +80,41 @@ if (f == 1 | f == 2) {
   ploidy = read.table(facs, header=FALSE, sep="\t", as.is=TRUE)  
 }
 
+# ---- (NEW) ploidy-interval constraint --------------------------------------
+# 15th positional arg: a global spec like "1.8-2.2" or "1.8-2.2,3.8-4.2",
+# OR a path to a TAB file  <sample>\t<spec>  for per-cell limits. "" = off.
+ploidy_intervals = if (length(args) >= 16) args[[16]] else ""
+
+parse_ranges = function(spec) {
+    spec = trimws(spec)
+    if (!nzchar(spec)) return(NULL)
+    lapply(strsplit(spec, ",", fixed=TRUE)[[1]], function(p) {
+        v = as.numeric(strsplit(trimws(p), "-", fixed=TRUE)[[1]])
+        if (length(v) == 1) v = c(v, v)
+        c(min(v), max(v))
+    })
+}
+ploidy_ranges_global = NULL; ploidy_ranges_percell = NULL
+if (nzchar(ploidy_intervals)) {
+    if (file.exists(ploidy_intervals)) {
+        .pit = read.table(ploidy_intervals, header=FALSE, sep="\t", as.is=TRUE)
+        ploidy_ranges_percell = setNames(lapply(.pit[,2], parse_ranges), as.character(.pit[,1]))
+    } else {
+        ploidy_ranges_global = parse_ranges(ploidy_intervals)
+    }
+}
+# logical mask over CNgrid of ploidies allowed for a given sample
+ploidy_mask_for = function(cell, grid) {
+    rngs = if (!is.null(ploidy_ranges_percell) && cell %in% names(ploidy_ranges_percell))
+               ploidy_ranges_percell[[cell]] else ploidy_ranges_global
+    if (is.null(rngs)) return(rep(TRUE, length(grid)))
+    mask = Reduce(`|`, lapply(rngs, function(r) grid >= r[1] & grid <= r[2]))
+    if (!any(mask)) mask[which.min(abs(grid - mean(rngs[[1]])))] = TRUE  # snap if between grid points
+    mask
+}
+
+# ----------------------------------------------------------------------------
+
 # Remove bad bins
 if (bb)
 {
@@ -226,6 +261,8 @@ results=mclapply(1:w, function(k)
   outerRound       = round(outerRaw)
   outerDiff        = (outerRaw - outerRound) ^ 2
   outerColsums[,k] = colSums(outerDiff, na.rm = FALSE, dims = 1)
+
+if (FALSE) {
   CNmult[,k]       = CNgrid[order(outerColsums[,k])]
   CNerror[,k]      = round(sort(outerColsums[,k]), digits=2)
 
@@ -239,6 +276,26 @@ results=mclapply(1:w, function(k)
     estimate = ploidy[which(lab[k]==ploidy[,1]),2]
     CN = CNmult[which(abs(CNmult[,k] - estimate)<.4),k][1]
   }
+}
+
+  CNmult[,k] = CNgrid[order(outerColsums[,k])]
+  CNerror[,k] = round(sort(outerColsums[,k]), digits=2)
+
+  allowed      = ploidy_mask_for(lab[k], CNgrid)   # (NEW) all TRUE when no --ploidy
+  CNerror_facs = NA                                # (FIX) always defined for the SoS plot
+  used_facs    = FALSE
+  if (f == 0 | length(which(lab[k]==ploidy[,1]))==0 ) {
+    err = outerColsums[,k]; err[!allowed] = Inf  # (NEW) restrict SoS to the interval(s)
+    CN  = CNgrid[which.min(err)]
+  } else if (f == 1) {
+    CN = ploidy[which(lab[k]==ploidy[,1]),2]
+    CNerror_facs = round( sort(colSums((round(fixed[,k] %o% c(CN)) - fixed[,k] %o% c(CN)) ^ 2, na.rm=FALSE, dims=1)), digits=2 )
+    used_facs = TRUE
+  } else {
+    estimate = ploidy[which(lab[k]==ploidy[,1]),2]
+    CN = CNmult[which(abs(CNmult[,k] - estimate)<.4),k][1]
+  }
+
   final[,k] = round(fixed[,k]*CN)
 
   # Output results of CN calculations to file
@@ -418,8 +475,15 @@ results=mclapply(1:w, function(k)
   minSoS = data.frame(x=CNmult[1,k], y=CNerror[1,k])
   # If a FACS file is provided, use CNerror_facs, since CN multiplier could be 
   # outside the CNgrid range, which would cause "which(CNgrid==CN)" to error out
+if (FALSE) {
   if(f == 1) {
     bestSoS = data.frame(x=CN, y=CNerror_facs)    
+  } else {
+    bestSoS = data.frame(x=CN, y=outerColsums[which(CNgrid==CN),k])
+  }
+}
+  if(used_facs) {
+    bestSoS = data.frame(x=CN, y=CNerror_facs)
   } else {
     bestSoS = data.frame(x=CN, y=outerColsums[which(CNgrid==CN),k])
   }
